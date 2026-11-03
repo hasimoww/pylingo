@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyLingo - Python Öyrənmə Platforması</title>
+    <style>
+        :root {
+            --bg-color: #0b1319;
+            --card-bg: #15202b;
+            --accent: #58cc02;
+            --accent-hover: #46a302;
+            --text-main: #ffffff;
+            --text-sub: #8b98a5;
+            --locked: #273746;
+            --correct: #22c55e;
+            --wrong: #ef4444;
+            --blue: #3b82f6;
+            --yellow: #ffc800;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .screen { display: none; width: 100%; height: 100%; justify-content: center; align-items: center; }
+        .screen.active { display: flex; }
+
+        /* 1. PROFİL YARATMA EKRANI */
+        #setup-screen { flex-direction: column; padding: 20px; }
+        .setup-card {
+            background-color: var(--card-bg); padding: 35px; border-radius: 20px;
+            border: 2px solid #273746; width: 100%; max-width: 450px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        .setup-card h1 { color: var(--accent); margin-bottom: 10px; }
+        .setup-card p { color: var(--text-sub); margin-bottom: 25px; }
+        .avatar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+        .avatar-option {
+            font-size: 2.2rem; padding: 10px; background: #1c2938; border: 2px solid transparent;
+            border-radius: 12px; cursor: pointer; transition: all 0.2s;
+        }
+        .avatar-option:hover, .avatar-option.selected { border-color: var(--accent); background: #253342; transform: scale(1.1); }
+        .input-group input {
+            width: 100%; padding: 14px; border-radius: 10px; border: 2px solid #273746;
+            background: #1c2938; color: white; font-size: 1rem; margin-bottom: 20px; outline: none;
+        }
+        .input-group input:focus { border-color: var(--accent); }
+
+        .btn-start {
+            width: 100%; padding: 14px; background-color: var(--accent); color: black;
+            font-weight: bold; font-size: 1.1rem; border: none; border-radius: 10px;
+            cursor: pointer; box-shadow: 0 4px 0 #46a302; transition: all 0.2s;
+        }
+        .btn-start:active { transform: translateY(2px); box-shadow: 0 2px 0 #46a302; }
+        .btn-start:disabled { background-color: var(--locked); color: var(--text-sub); box-shadow: none; cursor: not-allowed; }
+
+        /* 2. ƏSAS OYUN PANELİ */
+        #main-screen { flex-direction: column; width: 100vw; min-height: 100vh; justify-content: flex-start; position: relative; }
+        header {
+            width: 100%; background-color: var(--card-bg); padding: 15px 40px;
+            display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #273746;
+        }
+        .header-stats { display: flex; gap: 20px; font-weight: bold; font-size: 1.1rem; align-items: center; }
+        .heart-badge { cursor: pointer; display: flex; align-items: center; gap: 4px; background: #1c2938; padding: 6px 12px; border-radius: 20px; border: 1px solid #273746; }
+        .heart-badge:hover { border-color: var(--wrong); }
+        .heart-timer { font-size: 0.85rem; color: var(--yellow); }
+
+        .dashboard-layout { display: grid; grid-template-columns: 320px 1fr 380px; gap: 20px; padding: 30px; max-width: 1550px; margin: 0 auto; width: 100%; flex-grow: 1; }
+        .panel-card { background-color: var(--card-bg); border-radius: 16px; padding: 20px; border: 2px solid #273746; height: fit-content; }
+        .profile-info { text-align: center; }
+        .profile-avatar { font-size: 4rem; margin-bottom: 10px; display: inline-block; background: #1c2938; padding: 15px; border-radius: 50%; border: 2px solid var(--accent); }
+        .profile-name { font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; }
+        .stat-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #273746; color: var(--text-sub); }
+        .stat-item b { color: white; }
+        .btn-reset { margin-top: 15px; width: 100%; padding: 10px; background-color: #ef444422; color: #ef4444; border: 1px solid #ef4444; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-reset:hover { background-color: #ef4444; color: white; }
+
+        .quests-container { margin-top: 20px; border-top: 2px solid #273746; padding-top: 15px; }
+        .quest-item { display: flex; align-items: center; justify-content: space-between; background: #1c2938; padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 0.8rem; }
+        .quest-item.completed { border: 1px solid var(--accent); background: #15291e; }
+
+        .path-section { display: flex; flex-direction: column; align-items: center; overflow-y: auto; max-height: 78vh; padding-right: 15px; scrollbar-width: thin; scrollbar-color: var(--accent) var(--card-bg); scroll-behavior: smooth; }
+        .path-section::-webkit-scrollbar { width: 6px; }
+        .path-section::-webkit-scrollbar-thumb { background-color: var(--accent); border-radius: 10px; }
+        .path-title { font-size: 1.3rem; color: var(--text-sub); margin-bottom: 15px; text-align: center; }
+        .nav-sec-btn { padding: 10px 20px; background: #1c2938; border: 1px solid #273746; color: var(--text-main); border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 0.9rem; margin: 10px 0; transition: all 0.2s; }
+        .nav-sec-btn:hover { background: #253342; border-color: var(--accent); }
+
+        .nodes-container { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 10px 0; }
+        .level-node { width: 70px; height: 70px; background-color: var(--accent); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.4rem; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 5px 0 #46a302; transition: all 0.2s; }
+        .level-node.completed { background-color: var(--blue); box-shadow: 0 5px 0 #1d4ed8; }
+        .level-node.locked { background-color: var(--locked); box-shadow: 0 5px 0 #1c2938; cursor: not-allowed; opacity: 0.6; }
+        .node-pos-0 { transform: translateX(0px); }
+        .node-pos-1 { transform: translateX(45px); }
+        .node-pos-2 { transform: translateX(0px); }
+        .node-pos-3 { transform: translateX(-45px); }
+
+        .rule-card { background: #15202b; border: 2px solid #273746; border-radius: 16px; padding: 20px; height: fit-content; display: flex; flex-direction: column; gap: 15px; }
+        .rule-content-box { background: #0d1720; border-left: 4px solid var(--yellow); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; color: #7dd3fc; line-height: 1.4; }
+        .example-box { background: #0a131c; border: 1px solid #1f2d3d; border-radius: 8px; padding: 12px; font-size: 0.83rem; color: #e2e8f0; }
+        .example-box b { color: var(--accent); display: block; margin-bottom: 4px; }
+        .code-block { background: #050b10; border-radius: 6px; padding: 8px 12px; font-family: 'Courier New', Courier, monospace; color: #38bdf8; white-space: pre-wrap; margin-bottom: 6px; border-left: 2px solid var(--accent); }
+        .io-label { font-size: 0.78rem; color: #94a3b8; font-weight: bold; margin-top: 4px; display: block; }
+        .extra-tip-box { background: #101d28; border: 1px dashed #273746; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: var(--text-sub); line-height: 1.4; }
+        .author-watermark { position: fixed; bottom: 10px; left: 15px; font-size: 0.75rem; color: var(--text-sub); opacity: 0.6; letter-spacing: 0.5px; pointer-events: none; z-index: 5; }
+
+        /* MODALLAR */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 10; }
+        .modal.active { display: flex; }
+        .modal-body { background: var(--card-bg); padding: 30px; border-radius: 20px; max-width: 520px; width: 100%; border: 2px solid #273746; text-align: center; position: relative; }
+        
+        .modal-close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.4rem; color: var(--text-sub); cursor: pointer; transition: color 0.2s; }
+        .modal-close-btn:hover { color: var(--wrong); }
+
+        .options-grid { display: grid; gap: 10px; margin: 20px 0; text-align: left; }
+        .btn-opt { padding: 12px; background: #1c2938; border: 2px solid #273746; color: white; border-radius: 10px; cursor: pointer; text-align: left; font-size: 0.95rem; }
+        .btn-opt.selected { border-color: var(--blue); background: #1e3a5f; }
+        .btn-opt.correct { background: var(--correct) !important; color: black; font-weight: bold; border-color: var(--correct); }
+        .btn-opt.wrong { background: var(--wrong) !important; border-color: var(--wrong); }
+
+        .quiz-actions-row { display: flex; gap: 10px; margin-top: 15px; justify-content: space-between; }
+        .btn-hint { background: #1c2938; border: 1px solid var(--yellow); color: var(--yellow); padding: 12px 16px; border-radius: 10px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .btn-hint:hover { background: #2a2810; }
+
+        .hint-display-box { background: #1c2410; border: 1px solid var(--yellow); color: var(--yellow); padding: 12px; border-radius: 10px; font-size: 0.85rem; text-align: left; margin-top: 15px; display: none; }
+
+        .write-input-box { margin: 20px 0; display: flex; flex-direction: column; gap: 10px; }
+        .write-input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #273746; background: #0d1720; color: #7dd3fc; font-family: monospace; font-size: 1.1rem; }
+        .feedback-text { font-size: 0.9rem; font-weight: bold; margin-top: 5px; text-align: left; }
+
+        /* SƏLİQƏLİ BİLDİRİŞ MODALI */
+        #custom-alert-modal .overlay-card { border-color: var(--yellow); }
+        #custom-alert-modal h2 { color: var(--yellow); font-size: 1.5rem; }
+
+        /* WATER SORT PUZZLE MODALI */
+        .puzzle-card { background: var(--card-bg); border: 2px solid var(--accent); padding: 25px; border-radius: 20px; max-width: 480px; width: 100%; text-align: center; position: relative; }
+        .bottles-container { display: flex; justify-content: center; gap: 15px; margin: 25px 0; flex-wrap: wrap; }
+        .bottle { width: 45px; height: 140px; border: 3px solid #64748b; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px; display: flex; flex-direction: column-reverse; overflow: hidden; cursor: pointer; background: rgba(0,0,0,0.3); transition: transform 0.2s, border-color 0.2s; }
+        .bottle.selected { transform: translateY(-12px); border-color: var(--yellow); box-shadow: 0 0 12px var(--yellow); }
+        .water-layer { width: 100%; height: 25%; transition: height 0.3s ease; }
+        .puzzle-btn-group { display: flex; gap: 10px; margin-top: 10px; }
+
+        /* OVERLAYLAR */
+        .custom-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(11, 19, 25, 0.92); display: none; justify-content: center; align-items: center; z-index: 20; }
+        .custom-overlay.active { display: flex; }
+        .overlay-card { background: var(--card-bg); border: 2px solid var(--wrong); padding: 35px; border-radius: 20px; text-align: center; max-width: 420px; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
+        .overlay-card h2 { color: var(--wrong); font-size: 1.8rem; margin-bottom: 10px; }
+        .overlay-card p { color: var(--text-sub); margin-bottom: 20px; font-size: 0.95rem; line-height: 1.4; }
+        .overlay-btn-group { display: flex; gap: 10px; flex-direction: column; }
+    </style>
+</head>
+<body>
+
+    <div class="author-watermark">Created by Fariz Hasimov</div>
+
+    <!-- 1. PROFİL YARATMA EKRANI -->
+    <div id="setup-screen" class="screen active">
+        <div class="setup-card">
+            <h1>🐍 PyLingo</h1>
+            <p>Profilini yaradaraq Python macərasına başla!</p>
+            <div class="avatar-grid" id="avatar-selector">
+                <div class="avatar-option selected" onclick="selectAvatar('👨‍💻', this)">👨‍💻</div>
+                <div class="avatar-option" onclick="selectAvatar('👩‍💻', this)">👩‍💻</div>
+                <div class="avatar-option" onclick="selectAvatar('🐱', this)">🐱</div>
+                <div class="avatar-option" onclick="selectAvatar('🐶', this)">🐶</div>
+                <div class="avatar-option" onclick="selectAvatar('🐼', this)">🐼</div>
+                <div class="avatar-option" onclick="selectAvatar('🦁', this)">🦁</div>
+                <div class="avatar-option" onclick="selectAvatar('🦊', this)">🦊</div>
+                <div class="avatar-option" onclick="selectAvatar('🚀', this)">🚀</div>
+            </div>
+            <div class="input-group">
+                <input type="text" id="username-input" placeholder="İstifadəçi adını yazın...">
+            </div>
+            <button class="btn-start" onclick="saveProfileAndStart()">Tətbiqə Başla ➔</button>
+        </div>
+    </div>
+
+    <!-- 2. ƏSAS OYUN PANELİ -->
+    <div id="main-screen" class="screen">
+        <header>
+            <h2>🐍 PyLingo</h2>
+            <div class="header-stats">
+                <div class="heart-badge" onclick="openPuzzleIfCan()" title="Can Artır">
+                    ❤️ <span id="lives-count">3</span><span id="heart-timer" class="heart-timer"></span>
+                </div>
+                <span>⭐ <span id="xp-count">0</span> Xal</span>
+            </div>
+        </header>
+
+        <div class="dashboard-layout">
+            <!-- SOL PANEL -->
+            <div class="panel-card">
+                <div class="profile-info">
+                    <div class="profile-avatar" id="user-avatar-display">👨‍💻</div>
+                    <div class="profile-name" id="user-name-display">İstifadəçi</div>
+                </div>
+                <div class="stat-item">
+                    <span>Cari Bölmə:</span>
+                    <b style="color:var(--accent);" id="current-section-label">Bölmə 1</b>
+                </div>
+                <div class="stat-item">
+                    <span>Tamamlanan:</span>
+                    <b id="completed-count">0 / 50</b>
+                </div>
+                <div class="stat-item">
+                    <span>Ümumi Xal:</span>
+                    <b id="total-xp-display">0 Xal</b>
+                </div>
+                <button class="btn-reset" onclick="openResetModal()">Sıfırla & Yenidən Başla 🔄</button>
+
+                <div class="quests-container">
+                    <h4 style="margin-bottom:8px; color:var(--yellow); font-size:0.9rem;" id="quest-title-label">🎯 Bölmə 1 Hədəfləri (5)</h4>
+                    <div class="quest-item" id="quest-1"><span id="q1-text">1. İlk səviyyəni tamamla</span><b id="q1-status">⏳</b></div>
+                    <div class="quest-item" id="quest-2"><span id="q2-text">2. 300 Xal topla</span><b id="q2-status">⏳</b></div>
+                    <div class="quest-item" id="quest-3"><span id="q3-text">3. 5 səviyyə ardıcıl keç</span><b id="q3-status">⏳</b></div>
+                    <div class="quest-item" id="quest-4"><span id="q4-text">4. 8-ci səviyyəyə çat</span><b id="q4-status">⏳</b></div>
+                    <div class="quest-item" id="quest-5"><span id="q5-text">5. Bölməni tamamilə bitir</span><b id="q5-status">⏳</b></div>
+                </div>
+            </div>
+
+            <!-- MƏRKƏZ: YOL XƏRİTƏSİ -->
+            <div class="path-section" id="path-scroll-area">
+                <button class="nav-sec-btn" id="prev-sec-btn" style="display:none;" onclick="prevSection()">⬆️ Əvvəlki Bölməyə Qayıt</button>
+                <div class="path-title" id="path-section-title">Bölmə 1: Dəyişənlər və Əsaslar (Səviyyə 1-10)</div>
+                <div class="nodes-container" id="nodes-container"></div>
+                <button class="nav-sec-btn" id="next-sec-btn" onclick="nextSection()">⬇️ Növbəti Bölməyə Keç</button>
+            </div>
+
+            <!-- SAĞ PANEL -->
+            <div class="rule-card" id="right-rule-panel">
+                <div>
+                    <h3 style="margin-bottom:8px; color:var(--accent); font-size:1.1rem;">📖 Python Qaydası</h3>
+                    <div class="rule-content-box" id="rule-box-content">
+                        <b>Xoş gəlmisiniz!</b><br>Səviyyəni uğurla tamamladıqca burada həmin suala aid qaydalar və izahatlar görünəcək.
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom:6px; color:#38bdf8; font-size:1rem;">💻 Nümunə:</h3>
+                    <div class="example-box" id="example-box-content">
+                        <b>Kod nümunəsi:</b>
+                        <div class="code-block">print("Salam, Dünya!")</div>
+                        <span class="io-label">Giriş: Yoxdur</span>
+                        <span class="io-label">Çıxış: Salam, Dünya!</span>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom:6px; color:var(--yellow); font-size:1rem;">💡 Faydalı Məsləhət</h3>
+                    <div class="extra-tip-box" id="random-tip-content">
+                        • Python böyük və kiçik hərflərə qarşı həssasdır (Case-sensitive).
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUAL MODALI -->
+    <div class="modal" id="quiz-modal">
+        <div class="modal-body">
+            <div class="modal-close-btn" onclick="closeQuiz(false)">✖</div>
+            <h3 id="q-title" style="color:var(--accent); margin-bottom:10px;">Sual</h3>
+            <p id="q-text" style="margin-bottom:15px; text-align: left;">...</p>
+            
+            <div class="options-grid" id="q-options"></div>
+            
+            <div class="write-input-box" id="write-container" style="display: none;">
+                <input type="text" class="write-input" id="user-write-input" placeholder="Cavabınızı bura yazın..." oninput="onWriteInputChange()">
+                <div id="write-feedback" class="feedback-text"></div>
+            </div>
+
+            <div class="hint-display-box" id="hint-display"></div>
+
+            <div class="quiz-actions-row">
+                <button class="btn-hint" id="hint-btn" onclick="buyHint()">💡 İpucu (200 Xal)</button>
+                <button class="btn-start" id="submit-confirm-btn" style="width:auto; padding:12px 25px;" disabled onclick="confirmAnswer()">Təsdiqlə ➔</button>
+            </div>
+
+            <button class="btn-start" id="modal-next-btn" style="display:none; margin-top:15px;" onclick="closeQuiz(true)">Davam Et ➔</button>
+        </div>
+    </div>
+
+    <!-- WATER SORT PUZZLE MODALI -->
+    <div class="modal" id="puzzle-modal">
+        <div class="puzzle-card">
+            <div class="modal-close-btn" onclick="closePuzzleModal()">✖</div>
+            <h2 style="color:var(--accent); margin-bottom:5px;">🧪 Water Sort Puzzle</h2>
+            <p style="color:var(--text-sub); font-size:0.85rem;" id="puzzle-attempts-info">Eyni rəngli suları bir şüşədə topla! Günlük istifadə: 0/5</p>
+            
+            <div class="bottles-container" id="bottles-container"></div>
+
+            <p id="puzzle-msg" style="font-weight:bold; font-size:0.9rem; margin-bottom:15px; min-height:22px;"></p>
+            
+            <div class="puzzle-btn-group">
+                <button class="btn-start" style="background:#273746; color:white; box-shadow:none;" onclick="resetPuzzleGame()">Yenidən Başla 🔄</button>
+                <button class="btn-start" id="puzzle-check-btn" onclick="verifyWaterSortPuzzle()">Təsdiqlə ✔️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SƏLİQƏLİ BİLDİRİŞ (ALERT) MODALI -->
+    <div class="custom-overlay" id="custom-alert-modal">
+        <div class="overlay-card">
+            <h2 id="alert-title">Bildiriş</h2>
+            <p id="alert-message">Xəbərdarlıq mətni...</p>
+            <button class="btn-start" onclick="closeAlertModal()">Aydındır ➔</button>
+        </div>
+    </div>
+
+    <!-- OVERLAYLAR -->
+    <div id="game-over-screen" class="custom-overlay">
+        <div class="overlay-card">
+            <h2>💔 Canlarınız Bitdi!</h2>
+            <p id="no-lives-msg">Bütün canların tükəndi! Taymeri gözləyə və ya Mini-Puzzle oynayaraq can bərpa edə bilərsən.</p>
+            <div class="overlay-btn-group">
+                <button class="btn-start" onclick="openPuzzleFromGameOver()">🧪 Mini Puzzle Oyna (+1 ❤️)</button>
+                <button class="btn-start" style="background:#273746; color:white; box-shadow:none;" onclick="closeNoLivesModal()">Gözlə ➔</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="section-locked-screen" class="custom-overlay">
+        <div class="overlay-card" style="border-color: var(--yellow);">
+            <h2 style="color: var(--yellow);">🔒 Bölmə Kilidlidir!</h2>
+            <p>Növbəti bölməyə keçmək üçün cari bölmənin bütün 10 səviyyəsini uğurla tamamlamalısınız.</p>
+            <button class="btn-start" onclick="closeLockedModal()">Aydındır ➔</button>
+        </div>
+    </div>
+
+    <div id="reset-confirm-screen" class="custom-overlay">
+        <div class="overlay-card" style="border-color: var(--yellow);">
+            <h2 style="color: var(--yellow);">⚠️ Hesabı Sıfırla?</h2>
+            <p>Bütün hesab məlumatlarınız və tərəqqiniz silinəcək, giriş ekranına qayıdacaqsınız. Əminsinizmi?</p>
+            <div class="overlay-btn-group">
+                <button class="btn-start" style="background: #37464f; color: white;" onclick="closeResetModal()">Ləğv et</button>
+                <button class="btn-start" style="background: var(--wrong); color: white;" onclick="confirmReset()">Bəli, Sıfırla</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let selectedAvatar = '👨‍💻';
+    let userData = {
+        name: '', avatar: '👨‍💻', xp: 0, completedLevels: [], lives: 3, lastHeartLostTime: null,
+        unlockedHints: [], puzzleDaily: { date: '', count: 0 }
+    };
+
+    let activeSection = 1;
+    const totalSections = 5;
+    let selectedOptionIdx = null;
+    let lastCompletedLevelForRules = null;
+
+    // WATER SORT PUZZLE DƏYİŞƏNLƏRİ
+    const COLOR_PALETTE = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
+    let bottleStates = [];
+    let selectedBottleIdx = null;
+
+    const randomTips = [
+        "• Python böyük və kiçik hərflərə qarşı həssasdır (Case-sensitive).",
+        "• Kod yazarkən girintilərə (indentation/boşluqlara) xüsusi diqqət yetirin.",
+        "• Dəyişən adlarında boşluq əvəzinə alt xətt (_) istifadə edin.",
+        "• Şərh yazmaq üçün kodun əvvəlinə # işarəsi qoyun."
+    ];
+
+    const sectionQuests = {
+        1: ["1. 1-ci səviyyəni tamamla", "2. Toplam 300 Xal qazan", "3. Ardıcıl 5 səviyyə keç", "4. 8-ci səviyyəyə çat", "5. 1-ci bölməni 100% bitir"],
+        2: ["1. 11-ci səviyyəni tamamla", "2. Toplam 750 Xal qazan", "3. Dövrlər mövzusunda 4 test keç", "4. 17-ci səviyyəyə çat", "5. 2-ci bölməni 100% bitir"],
+        3: ["1. 21-ci səviyyəni tamamla", "2. Toplam 1200 Xal qazan", "3. Funksiyalardan 5 test bitir", "4. 27-ci səviyyəyə çat", "5. 3-cü bölməni 100% bitir"],
+        4: ["1. 31-ci səviyyəni tamamla", "2. Toplam 1700 Xal qazan", "3. Lüğətlər mövzusunda 5 test keç", "4. 37-ci səviyyəyə çat", "5. 4-cü bölməni 100% bitir"],
+        5: ["1. 41-ci səviyyəni tamamla", "2. Toplam 2200 Xal qazan", "3. Xəta idarəsindən 5 test keç", "4. 47-ci səviyyəyə çat", "5. BÜTÜN PLATFORMANI 100% bitir"]
+    };
+
+    const sectionRules = {
+        1: { 
+            1: "<b>Qayda 1: Print Funksiyası</b><br>• Mətn ekrana <code>print()</code> vasitəsilə çıxarılır.", 
+            2: "<b>Qayda 2: int (Tam Ədəd)</b><br>• Vergülsüz ədədlər int tipinə aiddir.", 
+            3: "<b>Qayda 3: str (Mətn)</b><br>• Dırnaq içindəki simvollar sətirdir.", 
+            4: "<b>Qayda 4: Dəyişən Adı</b><br>• Rəqəmlə başlaya bilməz, xüsusi simvol daşımır.", 
+            5: "<b>Qayda 5: Riyazi Əməl</b><br>• Python standart riyazi simvollardan istifadə edir.", 
+            6: "<b>Qayda 6: Qalıq (%)</b><br>• Bölmədən qalan qalığı qaytarır.", 
+            7: "<b>Qayda 7: Tip Çevirmə</b><br>• <code>int()</code> mətni rəqəmə çevirir.", 
+            8: "<b>Qayda 8: if Şərti</b><br>• Şərt ödəndikdə blok icra olunur.", 
+            9: "<b>Qayda 9: and Operatoru</b><br>• Hər iki tərəf doğru olmalıdır.", 
+            10: "<b>Qayda 10: print Çıxışı</b><br>• Dəyişən dəyərini oxumaq üçün print lazımdır." 
+        },
+        2: { 
+            1: "<b>Qayda 11: range()</b><br>• Ardıcıl rəqəm diapazonu yaradır.", 
+            2: "<b>Qayda 12: while Dövrü</b><br>• Şərt doğru olduğu müddətcə təkrarlanır.", 
+            3: "<b>Qayda 13: Siyahı (List)</b><br>• Kvadrat mötərizədə elementlər saxlayır.", 
+            4: "<b>Qayda 14: append()</b><br>• Siyahının sonuna element əlavə edir.", 
+            5: "<b>Qayda 15: İndeks</b><br>• Siyahıda sayma 0-dan başlayır.", 
+            6: "<b>Qayda 16: break</b><br>• Dövrü dərhal sonlandırır.", 
+            7: "<b>Qayda 17: continue</b><br>• Cari addımı ötürüb növbətiyə keçir.", 
+            8: "<b>Qayda 18: def</b><br>• Yeni funksiya təyin edir.", 
+            9: "<b>Qayda 19: Parametr</b><br>• Funksiyaya daxil olan dəyərdir.", 
+            10: "<b>Qayda 20: return</b><br>• Nəticəni funksiyadan qaytarır." 
+        },
+        3: { 
+            1: "<b>Qayda 21: def</b><br>• Funksiya quruluşunu başladır.", 
+            2: "<b>Qayda 22: Arqument</b><br>• Funksiyaya ötürülən faktiki dəyər.", 
+            3: "<b>Qayda 23: Default Parametr</b><br>• Standart (varsayılan) dəyər təyin edir.", 
+            4: "<b>Qayda 24: Keyword Arqument</b><br>• Adlandırılmış arqument ötürmə.", 
+            5: "<b>Qayda 25: *args</b><br>• İstənilən sayda mövqe arqumenti alır.", 
+            6: "<b>Qayda 26: **kwargs</b><br>• Lüğət tipli açar söz arqumentləri.", 
+            7: "<b>Qayda 27: lambda</b><br>• Bir sətrlik qısa anonim funksiya.", 
+            8: "<b>Qayda 28: global</b><br>• Qlobal dəyişənə daxil olmağa imkan verir.", 
+            9: "<b>Qayda 29: docstring</b><br>• Funksiya izahat sənədləşdirməsi.", 
+            10: "<b>Qayda 30: pass</b><br>• Boş keçid əmridir." 
+        },
+        4: { 
+            1: "<b>Qayda 31: Dict (Lüğət)</b><br>• Açar və dəyər cütlükləri saxlayır.", 
+            2: "<b>Qayda 32: Açarla Giriş</b><br>• <code>d['a']</code> vasitəsilə dəyər oxunur.", 
+            3: "<b>Qayda 33: keys()</b><br>• Lüğətin bütün açarlarını qaytarır.", 
+            4: "<b>Qayda 34: values()</b><br>• Lüğətin bütün dəyərlərini qaytarır.", 
+            5: "<b>Qayda 35: Set (Çoxluq)</b><br>• Təkrarlanmayan elementlər toplusudur.", 
+            6: "<b>Qayda 36: add()</b><br>• Çoxluğa yeni element əlavə edir.", 
+            7: "<b>Qayda 37: union()</b><br>• Çoxluqları birləşdirir.", 
+            8: "<b>Qayda 38: intersection()</b><br>• Çoxluqların kəsişməsini tapır.", 
+            9: "<b>Qayda 39: pop()</b><br>• Göstərilən elementi lüğətdən silir.", 
+            10: "<b>Qayda 40: get()</b><br>• Təhlükəsiz açar oxuma metodu." 
+        },
+        5: { 
+            1: "<b>Qayda 41: try/except</b><br>• Xəta yarana biləcək kodları qoruyur.", 
+            2: "<b>Qayda 42: ZeroDivisionError</b><br>• Ədədi sıfıra böldükdə yaranır.", 
+            3: "<b>Qayda 43: finally</b><br>• Xətadan asılı olmayaraq icra olunur.", 
+            4: "<b>Qayda 44: open()</b><br>• Xarici faylı sistemdə açır.", 
+            5: "<b>Qayda 45: read()</b><br>• Fayl məzmununu tam oxuyur.", 
+            6: "<b>Qayda 46: write()</b><br>• Fayla mətn yazır.", 
+            7: "<b>Qayda 47: close()</b><br>• Fayl bağlantısını bağlayır.", 
+            8: "<b>Qayda 48: with open</b><br>• Faylı avtomatik bağlayan blok.", 
+            9: "<b>Qayda 49: raise</b><br>• Proqramda qəsdən xəta yaradır.", 
+            10: "<b>Qayda 50: Yekun</b><br>• Python əsaslarını tamamladınız!" 
+        }
+    };
+
+    const sectionExamples = {
+        1: { 
+            1: "<div class='code-block'>print('Python')</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: Python</span>", 
+            2: "<div class='code-block'>x = 25</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: 25 (int)</span>", 
+            3: "<div class='code-block'>name = 'Ali'</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: Ali (str)</span>", 
+            4: "<div class='code-block'>user_age = 19</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: Dəyişən yaradıldı</span>", 
+            5: "<div class='code-block'>res = 5 + 3 * 2</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: 11</span>", 
+            6: "<div class='code-block'>qaliq = 10 % 4</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: 2</span>", 
+            7: "<div class='code-block'>val = int('100')</div><span class='io-label'>Giriş: '100' (mətn)</span><span class='io-label'>Çıxış: 100 (int rəqəm)</span>", 
+            8: "<div class='code-block'>if 10 > 5:\n    print('Böyükdür')</div><span class='io-label'>Giriş: 10 > 5 müqayisəsi</span><span class='io-label'>Çıxış: Böyükdür</span>", 
+            9: "<div class='code-block'>print(True and False)</div><span class='io-label'>Giriş: True və False</span><span class='io-label'>Çıxış: False</span>", 
+            10: "<div class='code-block'>x = 42\nprint(x)</div><span class='io-label'>Giriş: x = 42</span><span class='io-label'>Çıxış: 42</span>" 
+        },
+        2: { 
+            1: "<div class='code-block'>for i in range(3):\n    print(i)</div><span class='io-label'>Giriş: range(3)</span><span class='io-label'>Çıxış: 0, 1, 2</span>", 
+            2: "<div class='code-block'>i = 0\nwhile i < 2:\n    i += 1</div><span class='io-label'>Giriş: i = 0</span><span class='io-label'>Çıxış: Dövr 2 dəfə işləyir</span>", 
+            3: "<div class='code-block'>lst = [10, 20, 30]</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: [10, 20, 30]</span>", 
+            4: "<div class='code-block'>lst.append(40)</div><span class='io-label'>Giriş: Siyahıya 40 əlavə olunur</span><span class='io-label'>Çıxış: [10, 20, 30, 40]</span>", 
+            5: "<div class='code-block'>lst = ['a', 'b']\nprint(lst[0])</div><span class='io-label'>Giriş: indeks 0</span><span class='io-label'>Çıxış: a</span>", 
+            6: "<div class='code-block'>for i in range(5):\n    if i == 2: break</div><span class='io-label'>Giriş: i == 2 şərti</span><span class='io-label'>Çıxış: Dövr 2-də dayanır</span>", 
+            7: "<div class='code-block'>for i in range(3):\n    if i == 1: continue</div><span class='io-label'>Giriş: i == 1 şərti</span><span class='io-label'>Çıxış: 1 nömrəli addım ötürülür</span>", 
+            8: "<div class='code-block'>def salam():\n    print('Hi')</div><span class='io-label'>Giriş: salam() çağırışı</span><span class='io-label'>Çıxış: Hi</span>", 
+            9: "<div class='code-block'>def kvadrat(x):\n    return x * x</div><span class='io-label'>Giriş: x = 4</span><span class='io-label'>Çıxış: 16</span>", 
+            10: "<div class='code-block'>def topla(a, b):\n    return a + b</div><span class='io-label'>Giriş: a = 3, b = 7</span><span class='io-label'>Çıxış: 10</span>" 
+        },
+        3: { 
+            1: "<div class='code-block'>def test():\n    pass</div><span class='io-label'>Giriş: test()</span><span class='io-label'>Çıxış: Boş funksiya yaradıldı</span>", 
+            2: "<div class='code-block'>def cagir(ad):\n    print(ad)</div><span class='io-label'>Giriş: ad = 'Fariz'</span><span class='io-label'>Çıxış: Fariz</span>", 
+            3: "<div class='code-block'>def goster(x=10):\n    print(x)</div><span class='io-label'>Giriş: Arqument verilməyib</span><span class='io-label'>Çıxış: 10 (standart dəyər)</span>", 
+            4: "<div class='code-block'>def info(b, a):\n    print(a, b)</div><span class='io-label'>Giriş: b=2, a=1</span><span class='io-label'>Çıxış: 1 2</span>", 
+            5: "<div class='code-block'>def cem(*args):\n    return sum(args)</div><span class='io-label'>Giriş: 1, 2, 3, 4</span><span class='io-label'>Çıxış: 10</span>", 
+            6: "<div class='code-block'>def user(**kwargs):\n    print(kwargs)</div><span class='io-label'>Giriş: ad='Fariz', yas=19</span><span class='io-label'>Çıxış: {'ad': 'Fariz', 'yas': 19}</span>", 
+            7: "<div class='code-block'>f = lambda x: x + 5</div><span class='io-label'>Giriş: x = 10</span><span class='io-label'>Çıxış: 15</span>", 
+            8: "<div class='code-block'>x = 10\ndef deyis():\n    global x\n    x = 20</div><span class='io-label'>Giriş: deyis() funksiyası</span><span class='io-label'>Çıxış: x dəyəri 20 oldu</span>", 
+            9: "<div class='code-block'>def fun():\n    \"\"\"Bu sənəddir\"\"\"</div><span class='io-label'>Giriş: fun.__doc__</span><span class='io-label'>Çıxış: Bu sənəddir</span>", 
+            10: "<div class='code-block'>if True:\n    pass</div><span class='io-label'>Giriş: True</span><span class='io-label'>Çıxış: Heç nə etmədən davam edir</span>" 
+        },
+        4: { 
+            1: "<div class='code-block'>d = {'id': 1, 'ad': 'Python'}</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: Lüğət obyekti</span>", 
+            2: "<div class='code-block'>d = {'a': 5}\nprint(d['a'])</div><span class='io-label'>Giriş: 'a' açarı</span><span class='io-label'>Çıxış: 5</span>", 
+            3: "<div class='code-block'>print(d.keys())</div><span class='io-label'>Giriş: d lüğəti</span><span class='io-label'>Çıxış: Bütün açarlar siyahısı</span>", 
+            4: "<div class='code-block'>print(d.values())</div><span class='io-label'>Giriş: d lüğəti</span><span class='io-label'>Çıxış: Bütün qiymətlər siyahısı</span>", 
+            5: "<div class='code-block'>s = {1, 2, 2, 3}</div><span class='io-label'>Giriş: Təkrarlanan elementlər</span><span class='io-label'>Çıxış: {1, 2, 3} (təkrar silindi)</span>", 
+            6: "<div class='code-block'>s = {1}\ns.add(2)</div><span class='io-label'>Giriş: 2 əlavə olunur</span><span class='io-label'>Çıxış: {1, 2}</span>", 
+            7: "<div class='code-block'>a = {1, 2}\nb = {2, 3}\nprint(a.union(b))</div><span class='io-label'>Giriş: a və b çoxluqları</span><span class='io-label'>Çıxış: {1, 2, 3}</span>", 
+            8: "<div class='code-block'>print(a.intersection(b))</div><span class='io-label'>Giriş: Ortaq elementlər</span><span class='io-label'>Çıxış: {2}</span>", 
+            9: "<div class='code-block'>d = {'x': 10}\nd.pop('x')</div><span class='io-label'>Giriş: 'x' açarı</span><span class='io-label'>Çıxış: {} (açar silindi)</span>", 
+            10: "<div class='code-block'>print(d.get('yas', 0))</div><span class='io-label'>Giriş: Mövcud olmayan 'yas' açarı</span><span class='io-label'>Çıxış: 0 (standart dəyər)</span>" 
+        },
+        5: { 
+            1: "<div class='code-block'>try:\n    x = 1 / 0\nexcept:\n    print('Xəta!')</div><span class='io-label'>Giriş: Sıfıra bölmə cəhdi</span><span class='io-label'>Çıxış: Xəta!</span>", 
+            2: "<div class='code-block'>print(10 / 0)</div><span class='io-label'>Giriş: 10 / 0</span><span class='io-label'>Çıxış: ZeroDivisionError xətası</span>", 
+            3: "<div class='code-block'>try:\n    pass\nfinally:\n    print('Bitdi')</div><span class='io-label'>Giriş: Try bloku</span><span class='io-label'>Çıxış: Bitdi</span>", 
+            4: "<div class='code-block'>f = open('test.txt', 'r')</div><span class='io-label'>Giriş: 'test.txt' faylı</span><span class='io-label'>Çıxış: Fayl oxumaq üçün açıldı</span>", 
+            5: "<div class='code-block'>content = f.read()</div><span class='io-label'>Giriş: Fayl axını</span><span class='io-label'>Çıxış: Faylın mətn məzmunu</span>", 
+            6: "<div class='code-block'>f.write('Salam')</div><span class='io-label'>Giriş: 'Salam' mətni</span><span class='io-label'>Çıxış: Fayla mətn yazıldı</span>", 
+            7: "<div class='code-block'>f.close()</div><span class='io-label'>Giriş: Açıq fayl bağlantısı</span><span class='io-label'>Çıxış: Fayl bağlandı</span>", 
+            8: "<div class='code-block'>with open('f.txt') as f:\n    print(f.read())</div><span class='io-label'>Giriş: Fayl obyekti</span><span class='io-label'>Çıxış: Məzmun oxunub avtomatik bağlandı</span>", 
+            9: "<div class='code-block'>raise ValueError('Səhv!')</div><span class='io-label'>Giriş: Qəsdən şərt pozuntusu</span><span class='io-label'>Çıxış: ValueError: Səhv!</span>", 
+            10: "<div class='code-block'>print('Təbriklər!')</div><span class='io-label'>Giriş: Yoxdur</span><span class='io-label'>Çıxış: Təbriklər!</span>" 
+        }
+    };
+
+    const questions = {
+        1: { section: 1, type: 'choice', text: "Python-da ekrana söz çap etmək üçün hansı funksiya istifadə olunur?", opts: ["input()", "print()", "output()", "write()"], correct: 1, hint: "Kod çıxışı üçün ingiliscə 'çap etmək' mənası verən sözü seçin." },
+        2: { section: 1, type: 'choice', text: "15 ədədinin Python-dakı məlumat tipi hansıdır?", opts: ["str", "float", "int", "bool"], correct: 2, hint: "Tam ədədlər ingiliscə 'integer' sözünün qısaltmasıdır." },
+        3: { section: 1, type: 'choice', text: "'Salam' sözünün Python-dakı məlumat tipi nədir?", opts: ["str", "int", "list", "dict"], correct: 0, hint: "Dırnaq işarəsi içində yazılan mətnlər 'string' tipinə aiddir." },
+        4: { section: 1, type: 'choice', text: "Aşağıdakılardan hansı DÜZGÜN dəyişən adlandırmasıdır?", opts: ["2x", "my-var", "user_name", "class"], correct: 2, hint: "Dəyişən adı rəqəmlə başlaya bilməz və defis (-) işlədilə bilməz." },
+        5: { section: 1, type: 'choice', text: "Python-da 10 * 2 əməliyyatının nəticəsi nə olur?", opts: ["12", "5", "20", "102"], correct: 2, hint: "Ulduz (*) işarəsi vurma əməliyyatını bildirir." },
+        6: { section: 1, type: 'choice', text: "10 % 3 ifadəsinin nəticəsi neçədir?", opts: ["3", "1", "0", "3.3"], correct: 1, hint: "% operatoru bölmədən qalan qalığı tapır." },
+        7: { section: 1, type: 'write', text: "int('50') funksiyasının nəticəsi olan rəqəmi yazın:", correct: ["50", "50.0"], hint: "Mətn formalı '50' ədədini tam rəqəmə çevirir." },
+        8: { section: 1, type: 'choice', text: "x = 10 olarsa, if x > 5: şərti doğrudumu?", opts: ["Bəli", "Xeyr", "Xəta verər", "Bəlli deyil"], correct: 0, hint: "10 ədədi 5-dən böyükdür." },
+        9: { section: 1, type: 'choice', text: "True and False ifadəsinin nəticəsi nədir?", opts: ["True", "False", "None", "1"], correct: 1, hint: "'and' operatorunda hər iki tərəf True olmalıdır." },
+        10: { section: 1, type: 'write', text: "Dəyişənin dəyərini ekrana çıxaran əsas funksiyanın adını yazın:", correct: ["print", "print()"], hint: "print funksiyasıdır." },
+
+        11: { section: 2, type: 'write', text: "0-dan 4-ə qədər ədədlər yaratmaq üçün range() içərisinə nə yazılır?", correct: ["5", "0,5", "5.0"], hint: "range(N) funksiyası N daxil olmadan N-ə kadar sayır." },
+        12: { section: 2, type: 'choice', text: "Şərt doğru olduqda təkraralan dövr operatoru hansıdır?", opts: ["for", "while", "if", "def"], correct: 1, hint: "İngiliscə 'nə qədər ki' mənası verən açar sözdür." },
+        13: { section: 2, type: 'choice', text: "Python-da siyahı yaratmaq üçün hansı mötərizə işlədilir?", opts: ["()", "{}", "[]", "<>"], correct: 2, hint: "Kvadrat mötərizələrdən istifadə olunur." },
+        14: { section: 2, type: 'write', text: "Siyahının sonuna element əlavə etmək üçün hansı metod istifadə olunur?", correct: ["append", ".append()"], hint: "append metodudur." },
+        15: { section: 2, type: 'choice', text: "Siyahının ilk elementinin indeksi neçədir?", opts: ["1", "0", "-1", "Hiçbiri"], correct: 1, hint: "Python-da indeksləmə sıfırdan başalayır." },
+        16: { section: 2, type: 'choice', text: "Dövrü dərhal dayandırmaq üçün hansı əmr verilir?", opts: ["stop", "break", "exit", "end"], correct: 1, hint: "break əmri." },
+        17: { section: 2, type: 'choice', text: "Cari addımı ötürüb növbəti addıma keçən əmr hansıdır?", opts: ["continue", "pass", "skip", "next"], correct: 0, hint: "continue əmri." },
+        18: { section: 2, type: 'write', text: "Python-da yeni funksiya təyin etmək üçün hansı açar söz işlədilir?", correct: ["def"], hint: "def açar sözüdür." },
+        19: { section: 2, type: 'choice', text: "Funksiyadan dəyər qaytarmaq üçün hansı açar söz istifadə olunur?", opts: ["send", "return", "get", "give"], correct: 1, hint: "return sözü." },
+        20: { section: 2, type: 'write', text: "'Python' sözünün uzunluğunu tapan len('Python') funksiyası nəticə olaraq neçə qaytarır?", correct: ["6", "altı"], hint: "P-y-t-h-o-n hərflərini sayın." },
+
+        21: { section: 3, type: 'write', text: "Python-da funksiya yaratmağın başlanğıc açar sözünü yazın:", correct: ["def"], hint: "def" },
+        22: { section: 3, type: 'choice', text: "Funksiyaya ötürülən dəyərlər necə adlanır?", opts: ["Arqumentlər", "Dövrlər", "Siyahılar", "Klasslar"], correct: 0, hint: "Arqumentlər və ya parametrlər." },
+        23: { section: 3, type: 'write', text: "Funksiyadan nəticəni geri qaytarmaq üçün hansı açar söz istifadə olunur?", correct: ["return"], hint: "return" },
+        24: { section: 3, type: 'choice', text: "İstənilən sayda mövqe arqumentini qəbul etmək üçün hansı simvoldan istifadə olunur?", opts: ["*", "**", "&", "#"], correct: 0, hint: "Tək ulduz (*args)." },
+        25: { section: 3, type: 'choice', text: "Açar sözlü arqumentləri lüğət şəklində qəbul edən parametr simvolu hansıdır?", opts: ["*", "**", "@", "$"], correct: 1, hint: "Qoşa ulduz (**kwargs)." },
+        26: { section: 3, type: 'write', text: "Adsız (bir sətrlik) funksiyalar yaratmaq üçün hansı açar söz istifadə olunur?", correct: ["lambda"], hint: "lambda" },
+        27: { section: 3, type: 'choice', text: "Funksiya daxilində qlobal dəyişkənə dəyər vermək üçün hansı açar söz işlədilir?", opts: ["global", "local", "var", "static"], correct: 0, hint: "global" },
+        28: { section: 3, type: 'write', text: "Funksiyanın izahatı üçün istifadə olunan üçqat dırnaq necə adlanır?", correct: ["docstring", "docstrings"], hint: "docstring" },
+        29: { section: 3, type: 'choice', text: "Funksiyanın özünü çağırması prosesi necə adlanır?", opts: ["Rekursiya", "Dövr", "İtérasiya", "Xəritələmə"], correct: 0, hint: "Recursion/Rekursiya." },
+        30: { section: 3, type: 'choice', text: "Funksiya gövdəsini boş saxlayıb xəta almamaq üçün hansı açar söz işlədilir?", opts: ["pass", "null", "skip", "continue"], correct: 0, hint: "pass" },
+
+        31: { section: 4, type: 'choice', text: "Python-da lüğət (dictionary) yaratmaq üçün hansı mötərizə istifadə olunur?", opts: ["{}", "[]", "()", "<>"], correct: 0, hint: "Buruq mötərizələr {}." },
+        32: { section: 4, type: 'write', text: "d = {'a': 10} lüğətində 'a' açarına uyğun dəyəri tapmaq üçün d['a'] nə qaytaracaq?", correct: ["10"], hint: "10" },
+        33: { section: 4, type: 'choice', text: "Lüğətdəki bütün açarları əldə etmək üçün hansı metod çağrılır?", opts: ["keys()", "values()", "items()", "all()"], correct: 0, hint: "keys()" },
+        34: { section: 4, type: 'choice', text: "Lüğətdəki bütün dəyərləri almaq üçün hansı metod çağrılır?", opts: ["values()", "keys()", "get()", "fetch()"], correct: 0, hint: "values()" },
+        35: { section: 4, type: 'choice', text: "Təkrarlanan elementləri avtomatik silən veri tipi hansıdır?", opts: ["Set (Çoxluq)", "List", "Tuple", "String"], correct: 0, hint: "Set" },
+        36: { section: 4, type: 'write', text: "s = {1, 2} çoxluğuna yeni element əlavə edən metodun adını yazın:", correct: ["add", "add()", ".add()"], hint: "add" },
+        37: { section: 4, type: 'choice', text: "İki çoxluğun bütün elementlərini birləşdirən metod hansıdır?", opts: ["union()", "intersection()", "concat()", "join()"], correct: 0, hint: "union()" },
+        38: { section: 4, type: 'choice', text: "İki çoxluğun yalnız ortaq elementlərini tapan metod hansıdır?", opts: ["intersection()", "union()", "difference()", "same()"], correct: 0, hint: "intersection()" },
+        39: { section: 4, type: 'write', text: "Lüğətdən göstərilən açarı və onun dəyərini silən metod hansıdır?", correct: ["pop", "pop()", ".pop()"], hint: "pop" },
+        40: { section: 4, type: 'choice', text: "Açar tapılmadıqda xəta vermədən standart dəyər qaytaran metod hansıdır?", opts: ["get()", "find()", "search()", "keys()"], correct: 0, hint: "get()" },
+
+        41: { section: 5, type: 'choice', text: "Python-da xətaları tutmaq üçün hansı blok istifadə edilir?", opts: ["try / except", "if / else", "for / in", "do / while"], correct: 0, hint: "try / except" },
+        42: { section: 5, type: 'write', text: "Ədədi sıfıra bölərkən yaranan xətanın adını yazın:", correct: ["zerodivisionerror"], hint: "ZeroDivisionError" },
+        43: { section: 5, type: 'choice', text: "Xəta olub-olmamasından asılı olmayaraq HƏR ZAMAN işləyən blok hansıdır?", opts: ["finally", "except", "try", "else"], correct: 0, hint: "finally" },
+        44: { section: 5, type: 'choice', text: "Faylı oxumaq rejimində açmaq üçün hansı hərf istifadə edilir?", opts: ["'r'", "'w'", "'a'", "'x'"], correct: 0, hint: "'r' (read)" },
+        45: { section: 5, type: 'write', text: "Faylı yazma (write) rejimində açmaq üçün open() daxilinə hansı hərf yazılır?", correct: ["w", "'w'"], hint: "w" },
+        46: { section: 5, type: 'choice', text: "Fayldakı bütün mətn məzmununu oxumaq üçün hansı metod işlədilir?", opts: ["read()", "write()", "open()", "close()"], correct: 0, hint: "read()" },
+        47: { section: 5, type: 'choice', text: "Açılmış faylı bağlamaq üçün hansı metod istifadə olunur?", opts: ["close()", "stop()", "end()", "exit()"], correct: 0, hint: "close()" },
+        48: { section: 5, type: 'write', text: "Faylı avtomatik olaraq bağlayan bloku başlayan açar söz hansıdır?", correct: ["with"], hint: "with" },
+        49: { section: 5, type: 'choice', text: "Qəsdən xəta (exception) yaratmaq üçün hansı açar söz istifadə edilir?", opts: ["raise", "throw", "error", "catch"], correct: 0, hint: "raise" },
+        50: { section: 5, type: 'write', text: "Python dilində mətnləri ekrana çıxaran ən birinci öyrəndiyiniz funksiyanı yazın:", correct: ["print", "print()"], hint: "print" }
+    };
+
+    let activeGlobalLvl = 1;
+    let isAnswered = false;
+    let timerInterval = null;
+
+    window.onload = function() {
+        const saved = localStorage.getItem('pyLingoUser');
+        if(saved) {
+            userData = JSON.parse(saved);
+            if(userData.lives === undefined) userData.lives = 3;
+            if(!userData.unlockedHints) userData.unlockedHints = [];
+            if(!userData.puzzleDaily) userData.puzzleDaily = { date: '', count: 0 };
+            
+            if(userData.completedLevels.length > 0) {
+                lastCompletedLevelForRules = Math.max(...userData.completedLevels);
+                updateRightPanelRule(lastCompletedLevelForRules);
+            }
+
+            showMainScreen();
+        } else {
+            document.getElementById('setup-screen').classList.add('active');
+        }
+        startHeartTimerLoop();
+    };
+
+    function startHeartTimerLoop() {
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(checkHeartRegeneration, 1000);
+    }
+
+    function checkHeartRegeneration() {
+        if(userData.lives >= 3) {
+            document.getElementById('heart-timer').innerText = '';
+            userData.lastHeartLostTime = null;
+            return;
+        }
+        if(!userData.lastHeartLostTime) return;
+
+        const now = Date.now();
+        const elapsedSec = Math.floor((now - userData.lastHeartLostTime) / 1000);
+        const requiredSec = (userData.lives === 0) ? 1800 : 300;
+        const remainingSec = requiredSec - elapsedSec;
+
+        if(remainingSec <= 0) {
+            if(userData.lives === 0) {
+                userData.lives = 3;
+                userData.lastHeartLostTime = null;
+            } else {
+                userData.lives++;
+                if(userData.lives < 3) userData.lastHeartLostTime = Date.now();
+                else userData.lastHeartLostTime = null;
+            }
+            localStorage.setItem('pyLingoUser', JSON.stringify(userData));
+            updateUI();
+        } else {
+            const mins = Math.floor(remainingSec / 60);
+            const secs = remainingSec % 60;
+            document.getElementById('heart-timer').innerText = ` (${mins}:${secs < 10 ? '0' : ''}${secs})`;
+        }
+    }
+
+    function buildNodes() {
+        const container = document.getElementById('nodes-container');
+        container.innerHTML = '';
+        const startIdx = (activeSection - 1) * 10 + 1;
+        const endIdx = activeSection * 10;
+
+        for(let i = startIdx; i <= endIdx; i++) {
+            const localNum = ((i - 1) % 10) + 1;
+            const posClass = `node-pos-${(localNum - 1) % 4}`;
+            const node = document.createElement('div');
+            node.className = `level-node ${posClass} locked`;
+            node.id = `node-${i}`;
+            node.innerText = '🔒';
+            node.onclick = () => startLevel(i);
+            container.appendChild(node);
+        }
+    }
+
+    function isSectionCompleted(sec) {
+        const startLvl = (sec - 1) * 10 + 1;
+        const endLvl = sec * 10;
+        return userData.completedLevels.filter(l => l >= startLvl && l <= endLvl).length === 10;
+    }
+
+    function prevSection() { if(activeSection > 1) setSection(activeSection - 1); }
+    function nextSection() {
+        if(!isSectionCompleted(activeSection)) {
+            showCustomAlert("🔒 Bölmə Kilidlidir!", "Növbəti bölməyə keçmək üçün cari bölmənin bütün 10 səviyyəsini uğurla tamamlamalısınız.");
+            return;
+        }
+        if(activeSection < totalSections) setSection(activeSection + 1);
+    }
+
+    function closeLockedModal() { document.getElementById('section-locked-screen').classList.remove('active'); }
+    function closeNoLivesModal() { document.getElementById('game-over-screen').classList.remove('active'); }
+
+    function showCustomAlert(title, message) {
+        document.getElementById('alert-title').innerText = title;
+        document.getElementById('alert-message').innerText = message;
+        document.getElementById('custom-alert-modal').classList.add('active');
+    }
+    function closeAlertModal() {
+        document.getElementById('custom-alert-modal').classList.remove('active');
+    }
+
+    function setSection(sec) {
+        activeSection = sec;
+        const prevBtn = document.getElementById('prev-sec-btn');
+        const nextBtn = document.getElementById('next-sec-btn');
+
+        if(sec === 1) { prevBtn.style.display = 'none'; nextBtn.style.display = 'inline-block'; }
+        else if(sec === totalSections) { prevBtn.style.display = 'inline-block'; nextBtn.style.display = 'none'; }
+        else { prevBtn.style.display = 'inline-block'; nextBtn.style.display = 'inline-block'; }
+
+        const titles = { 1: "Bölmə 1: Əsaslar", 2: "Bölmə 2: Dövrlər və Siyahılar", 3: "Bölmə 3: Funksiyalar", 4: "Bölmə 4: Lüğətlər və Çoxluqlar", 5: "Bölmə 5: Xətalar və Fayllar" };
+        document.getElementById('path-section-title').innerText = titles[sec];
+        document.getElementById('current-section-label').innerText = `Bölmə ${sec}`;
+        document.getElementById('quest-title-label').innerText = `🎯 Bölmə ${sec} Hədəfləri (5)`;
+
+        if(sectionQuests[sec]) {
+            for(let q=1; q<=5; q++) document.getElementById(`q${q}-text`).innerText = sectionQuests[sec][q-1];
+        }
+
+        buildNodes();
+        updateUI();
+        document.getElementById('path-scroll-area').scrollTop = 0;
+    }
+
+    function selectAvatar(avatar, el) {
+        selectedAvatar = avatar;
+        document.querySelectorAll('.avatar-option').forEach(a => a.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function saveProfileAndStart() {
+        const name = document.getElementById('username-input').value.trim();
+        if(!name) {
+            showCustomAlert("⚠️ Diqqət", "Zəhmət olmasa adınızı daxil edin!");
+            return;
+        }
+        userData.name = name;
+        userData.avatar = selectedAvatar;
+        userData.lives = 3;
+        userData.lastHeartLostTime = null;
+        userData.unlockedHints = [];
+        userData.puzzleDaily = { date: new Date().toISOString().split('T')[0], count: 0 };
+        localStorage.setItem('pyLingoUser', JSON.stringify(userData));
+        showMainScreen();
+    }
+
+    function showMainScreen() {
+        document.getElementById('setup-screen').classList.remove('active');
+        document.getElementById('main-screen').classList.add('active');
+        document.getElementById('user-avatar-display').innerText = userData.avatar;
+        document.getElementById('user-name-display').innerText = userData.name;
+        setSection(activeSection);
+    }
+
+    function updateUI() {
+        document.getElementById('xp-count').innerText = userData.xp;
+        document.getElementById('total-xp-display').innerText = userData.xp + ' Xal';
+        document.getElementById('completed-count').innerText = `${userData.completedLevels.length} / ${totalSections * 10}`;
+        document.getElementById('lives-count').innerText = userData.lives;
+        checkHeartRegeneration();
+
+        const startIdx = (activeSection - 1) * 10 + 1;
+        const endIdx = activeSection * 10;
+
+        for(let i = startIdx; i <= endIdx; i++) {
+            const node = document.getElementById(`node-${i}`);
+            if(!node) continue;
+            if(userData.completedLevels.includes(i)) {
+                node.classList.remove('locked'); node.classList.add('completed'); node.innerText = i;
+            } else if(i === startIdx || userData.completedLevels.includes(i - 1)) {
+                node.classList.remove('locked', 'completed'); node.innerText = i;
+            } else {
+                node.classList.add('locked'); node.innerText = '🔒';
+            }
+        }
+
+        const secLevels = userData.completedLevels.filter(l => l >= startIdx && l <= endIdx);
+        document.getElementById('q1-status').innerText = secLevels.length >= 1 ? '✅' : '⏳';
+        
+        const targetXpBySec = { 1: 300, 2: 750, 3: 1200, 4: 1700, 5: 2200 };
+        document.getElementById('q2-status').innerText = userData.xp >= targetXpBySec[activeSection] ? '✅' : '⏳';
+        document.getElementById('q3-status').innerText = secLevels.length >= 5 ? '✅' : '⏳';
+        document.getElementById('q4-status').innerText = secLevels.length >= 8 ? '✅' : '⏳';
+        document.getElementById('q5-status').innerText = secLevels.length === 10 ? '✅' : '⏳';
+    }
+
+    function updateRightPanelRule(lvl) {
+        const sec = Math.ceil(lvl / 10);
+        const localNum = ((lvl - 1) % 10) + 1;
+        document.getElementById('rule-box-content').innerHTML = sectionRules[sec][localNum];
+        document.getElementById('example-box-content').innerHTML = sectionExamples[sec][localNum];
+        document.getElementById('random-tip-content').innerText = randomTips[Math.floor(Math.random() * randomTips.length)];
+    }
+
+    function startLevel(lvl) {
+        const isAlreadyCompleted = userData.completedLevels.includes(lvl);
+        if(!isAlreadyCompleted && userData.lives <= 0) {
+            document.getElementById('game-over-screen').classList.add('active');
+            return;
+        }
+
+        const startIdx = (activeSection - 1) * 10 + 1;
+        if(lvl > startIdx && !userData.completedLevels.includes(lvl - 1) && !isAlreadyCompleted) return;
+
+        activeGlobalLvl = lvl;
+        isAnswered = false;
+        selectedOptionIdx = null;
+
+        document.getElementById('right-rule-panel').style.display = 'none';
+
+        const q = questions[lvl];
+        document.getElementById('q-title').innerText = `Səviyyə ${lvl} (Bölmə ${activeSection})`;
+        document.getElementById('q-text').innerText = q.text;
+
+        const optGrid = document.getElementById('q-options');
+        const writeContainer = document.getElementById('write-container');
+        const confirmBtn = document.getElementById('submit-confirm-btn');
+        const feedbackDiv = document.getElementById('write-feedback');
+        const hintDisplay = document.getElementById('hint-display');
+
+        optGrid.innerHTML = '';
+        document.getElementById('user-write-input').value = '';
+        feedbackDiv.innerText = '';
+        confirmBtn.disabled = true;
+        confirmBtn.style.display = 'inline-block';
+        document.getElementById('modal-next-btn').style.display = 'none';
+
+        if(userData.unlockedHints.includes(lvl)) {
+            hintDisplay.innerText = `💡 İpucu: ${q.hint}`;
+            hintDisplay.style.display = 'block';
+            document.getElementById('hint-btn').style.display = 'none';
+        } else {
+            hintDisplay.style.display = 'none';
+            document.getElementById('hint-btn').style.display = 'flex';
+        }
+
+        if(q.type === 'choice') {
+            optGrid.style.display = 'grid';
+            writeContainer.style.display = 'none';
+
+            q.opts.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-opt';
+                btn.innerText = opt;
+                btn.onclick = () => selectOption(idx, btn);
+                optGrid.appendChild(btn);
+            });
+        } else {
+            optGrid.style.display = 'none';
+            writeContainer.style.display = 'flex';
+            setTimeout(() => document.getElementById('user-write-input').focus(), 100);
+        }
+
+        document.getElementById('quiz-modal').classList.add('active');
+    }
+
+    function selectOption(idx, btn) {
+        if(isAnswered) return;
+        selectedOptionIdx = idx;
+        document.querySelectorAll('.btn-opt').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        document.getElementById('submit-confirm-btn').disabled = false;
+    }
+
+    function onWriteInputChange() {
+        if(isAnswered) return;
+        const val = document.getElementById('user-write-input').value.trim();
+        document.getElementById('submit-confirm-btn').disabled = (val.length === 0);
+    }
+
+    function buyHint() {
+        if(userData.unlockedHints.includes(activeGlobalLvl)) return;
+
+        if(userData.xp < 200) {
+            showCustomAlert("⚠️ Bal Kifayət Etmir", "İpucu almaq üçün ən azı 200 Xalınız olmalıdır!");
+            return;
+        }
+
+        userData.xp -= 200;
+        userData.unlockedHints.push(activeGlobalLvl);
+        localStorage.setItem('pyLingoUser', JSON.stringify(userData));
+
+        const q = questions[activeGlobalLvl];
+        const hintDisplay = document.getElementById('hint-display');
+        hintDisplay.innerText = `💡 İpucu: ${q.hint}`;
+        hintDisplay.style.display = 'block';
+        document.getElementById('hint-btn').style.display = 'none';
+        updateUI();
+    }
+
+    function confirmAnswer() {
+        if(isAnswered) return;
+        isAnswered = true;
+
+        const q = questions[activeGlobalLvl];
+        const confirmBtn = document.getElementById('submit-confirm-btn');
+        confirmBtn.style.display = 'none';
+
+        if(q.type === 'choice') {
+            const allBtns = document.querySelectorAll('.btn-opt');
+            allBtns.forEach(b => b.disabled = true);
+
+            if(selectedOptionIdx === q.correct) {
+                allBtns[selectedOptionIdx].classList.add('correct');
+                handleSuccess();
+            } else {
+                if(selectedOptionIdx !== null) allBtns[selectedOptionIdx].classList.add('wrong');
+                allBtns[q.correct].classList.add('correct');
+                handleFailure();
+            }
+        } else {
+            const userVal = document.getElementById('user-write-input').value.trim().toLowerCase();
+            const feedbackDiv = document.getElementById('write-feedback');
+            const isCorrect = q.correct.some(ans => ans.toLowerCase() === userVal);
+
+            if(isCorrect) {
+                feedbackDiv.style.color = "var(--correct)";
+                feedbackDiv.innerText = "✔️ Düzgündür!";
+                handleSuccess();
+            } else {
+                feedbackDiv.style.color = "var(--wrong)";
+                feedbackDiv.innerText = `❌ Səhvdir! Düzgün cavab: ${q.correct[0]}`;
+                handleFailure();
+            }
+        }
+    }
+
+    function handleSuccess() {
+        lastCompletedLevelForRules = activeGlobalLvl;
+        updateRightPanelRule(activeGlobalLvl);
+
+        if(!userData.completedLevels.includes(activeGlobalLvl)) {
+            userData.xp += 50;
+            userData.completedLevels.push(activeGlobalLvl);
+            localStorage.setItem('pyLingoUser', JSON.stringify(userData));
+        }
+        document.getElementById('modal-next-btn').style.display = 'block';
+        updateUI();
+    }
+
+    function handleFailure() {
+        if(!userData.completedLevels.includes(activeGlobalLvl)) {
+            userData.lives--;
+            if(!userData.lastHeartLostTime) userData.lastHeartLostTime = Date.now();
+            localStorage.setItem('pyLingoUser', JSON.stringify(userData));
+            updateUI();
+
+            if(userData.lives <= 0) {
+                closeQuiz(false);
+                document.getElementById('game-over-screen').classList.add('active');
+                return;
+            }
+        }
+        document.getElementById('modal-next-btn').style.display = 'block';
+        updateUI();
+    }
+
+    function closeQuiz(reloadUI) {
+        document.getElementById('quiz-modal').classList.remove('active');
+        document.getElementById('right-rule-panel').style.display = 'flex';
+        if(reloadUI) updateUI();
+    }
+
+    /* WATER SORT PUZZLE MEKANİZMASI & TƏSDİQLƏMƏ */
+    function checkPuzzleDailyLimit() {
+        const today = new Date().toISOString().split('T')[0];
+        if(!userData.puzzleDaily || userData.puzzleDaily.date !== today) {
+            userData.puzzleDaily = { date: today, count: 0 };
+            localStorage.setItem('pyLingoUser', JSON.stringify(userData));
+        }
+        return userData.puzzleDaily.count < 5;
+    }
+
+    function openPuzzleIfCan() {
+        if(userData.lives >= 3) {
+            showCustomAlert("❤️ Can Doludur", "Canlarınız artıq maksimumdur (3/3)!");
+            return;
+        }
+        if(!checkPuzzleDailyLimit()) {
+            showCustomAlert("⚠️ Limit Bitdi", "Bu gün üçün 5/5 puzzle haqqınızdan istifadə etmisiniz! Sabah yenidən cəhd edin.");
+            return;
+        }
+        initPuzzleGame();
+        document.getElementById('puzzle-modal').classList.add('active');
+    }
+
+    function openPuzzleFromGameOver() {
+        closeNoLivesModal();
+        openPuzzleIfCan();
+    }
+
+    function closePuzzleModal() {
+        document.getElementById('puzzle-modal').classList.remove('active');
+    }
+
+    function initPuzzleGame() {
+        const todayCount = userData.puzzleDaily ? userData.puzzleDaily.count : 0;
+        document.getElementById('puzzle-attempts-info').innerText = `Eyni rəngli suları bir şüşədə topla! Günlük istifadə: ${todayCount}/5`;
+        document.getElementById('puzzle-msg').innerText = '';
+        selectedBottleIdx = null;
+
+        let colorPool = [];
+        COLOR_PALETTE.forEach(c => {
+            for(let i=0; i<3; i++) colorPool.push(c);
+        });
+
+        colorPool.sort(() => Math.random() - 0.5);
+
+        bottleStates = [
+            colorPool.slice(0, 3),
+            colorPool.slice(3, 6),
+            colorPool.slice(6, 9),
+            colorPool.slice(9, 12),
+            []
+        ];
+
+        renderPuzzle();
+    }
+
+    function resetPuzzleGame() { initPuzzleGame(); }
+
+    function renderPuzzle() {
+        const container = document.getElementById('bottles-container');
+        container.innerHTML = '';
+
+        bottleStates.forEach((layers, idx) => {
+            const bottleEl = document.createElement('div');
+            bottleEl.className = `bottle ${selectedBottleIdx === idx ? 'selected' : ''}`;
+            bottleEl.onclick = () => onBottleClick(idx);
+
+            layers.forEach(color => {
+                const layerEl = document.createElement('div');
+                layerEl.className = 'water-layer';
+                layerEl.style.backgroundColor = color;
+                bottleEl.appendChild(layerEl);
+            });
+
+            container.appendChild(bottleEl);
+        });
+    }
+
+    function onBottleClick(idx) {
+        const msgEl = document.getElementById('puzzle-msg');
+        msgEl.innerText = '';
+
+        if(selectedBottleIdx === null) {
+            if(bottleStates[idx].length === 0) return;
+            selectedBottleIdx = idx;
+        } else {
+            if(selectedBottleIdx === idx) {
+                selectedBottleIdx = null;
+            } else {
+                pourWater(selectedBottleIdx, idx);
+                selectedBottleIdx = null;
+            }
+        }
+        renderPuzzle();
+    }
+
+    function pourWater(fromIdx, toIdx) {
+        const fromArr = bottleStates[fromIdx];
+        const toArr = bottleStates[toIdx];
+
+        if(fromArr.length === 0) return;
+        if(toArr.length >= 4) {
+            document.getElementById('puzzle-msg').innerText = "⚠️ Bu şüşə doludur!";
+            return;
+        }
+
+        const topColor = fromArr[fromArr.length - 1];
+
+        if(toArr.length > 0 && toArr[toArr.length - 1] !== topColor) {
+            document.getElementById('puzzle-msg').innerText = "❌ Müxtəlif rəngləri üst-üstə tökə bilməzsən!";
+            return;
+        }
+
+        while(fromArr.length > 0 && fromArr[fromArr.length - 1] === topColor && toArr.length < 4) {
+            toArr.push(fromArr.pop());
+        }
+    }
+
+    function verifyWaterSortPuzzle() {
+        let activeColorsCount = 0;
+        let isSolved = true;
+
+        for(let arr of bottleStates) {
+            if(arr.length === 0) continue; 
+            
+            const firstColor = arr[0];
+            const allSame = arr.every(c => c === firstColor);
+            
+            if(!allSame) {
+                isSolved = false;
+                break;
+            }
+            activeColorsCount++;
+        }
+
+        if(isSolved && activeColorsCount === 4) {
+            userData.lives = Math.min(3, userData.lives + 1);
+            userData.puzzleDaily.count++;
+            localStorage.setItem('pyLingoUser', JSON.stringify(userData));
+            updateUI();
+
+            showCustomAlert("🎉 Təbriklər!", "Puzzle-ı uğurla həll etdiniz və +1 Can qazandınız! ❤️");
+            closePuzzleModal();
+        } else {
+            showCustomAlert("⏳ Hələ Tamamlanmayıb", "Şüşələrdəki sular hələ tam olaraq eyni rəng şəklində qruplaşdırılmayıb.");
+        }
+    }
+
+    /* HESAB SIFIRLAMA */
+    function openResetModal() { document.getElementById('reset-confirm-screen').classList.add('active'); }
+    function closeResetModal() { document.getElementById('reset-confirm-screen').classList.remove('active'); }
+    function confirmReset() { localStorage.removeItem('pyLingoUser'); location.reload(); }
+</script>
+
+</body>
+</html>
