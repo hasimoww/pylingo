@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PyLingo - Python Öyrənmə Platforması</title>
+    
+    <!-- Firebase SDK Kitabxanaları (App və Realtime Database) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --bg-color: #0b1319;
@@ -162,97 +167,26 @@
         .overlay-card p { color: var(--text-sub); margin-bottom: 20px; font-size: 0.95rem; line-height: 1.4; }
         .overlay-btn-group { display: flex; gap: 10px; flex-direction: column; }
 
-        /* ==========================================
-           MOBİL UYĞUNLAŞDIRMA (RESPONSIVE DESIGN)
-           ========================================== */
+        /* MOBİL UYĞUNLAŞDIRMA */
         @media (max-width: 1024px) {
-            .dashboard-layout {
-                grid-template-columns: 280px 1fr;
-            }
-            .rule-card {
-                grid-column: span 2;
-            }
+            .dashboard-layout { grid-template-columns: 280px 1fr; }
+            .rule-card { grid-column: span 2; }
         }
-
         @media (max-width: 768px) {
-            header {
-                padding: 12px 15px;
-                flex-direction: row;
-            }
-            header h2 {
-                font-size: 1.2rem;
-            }
-            .header-stats {
-                gap: 10px;
-                font-size: 0.95rem;
-            }
-            .heart-badge {
-                padding: 4px 8px;
-            }
-
-            .dashboard-layout {
-                display: flex;
-                flex-direction: column;
-                padding: 15px;
-                gap: 15px;
-            }
-
-            .panel-card, .rule-card {
-                width: 100%;
-            }
-
-            .path-section {
-                max-height: none;
-                overflow-y: visible;
-                padding-right: 0;
-                width: 100%;
-            }
-
+            header { padding: 12px 15px; flex-direction: row; }
+            header h2 { font-size: 1.2rem; }
+            .header-stats { gap: 10px; font-size: 0.95rem; }
+            .dashboard-layout { display: flex; flex-direction: column; padding: 15px; gap: 15px; }
+            .panel-card, .rule-card { width: 100%; }
+            .path-section { max-height: none; overflow-y: visible; padding-right: 0; width: 100%; }
             .node-pos-1 { transform: translateX(25px); }
             .node-pos-3 { transform: translateX(-25px); }
-
-            .modal-body {
-                padding: 20px;
-            }
-
-            .quiz-actions-row {
-                flex-direction: column;
-            }
-            .btn-hint, .quiz-actions-row .btn-start {
-                width: 100% !important;
-                justify-content: center;
-            }
-
-            .bottles-container {
-                gap: 10px;
-            }
-            .bottle {
-                width: 38px;
-                height: 120px;
-            }
-
-            .author-watermark {
-                display: none;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .setup-card {
-                padding: 20px 15px;
-            }
-            .avatar-grid {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 8px;
-            }
-            .avatar-option {
-                font-size: 1.8rem;
-                padding: 6px;
-            }
-            .level-node {
-                width: 60px;
-                height: 60px;
-                font-size: 1.2rem;
-            }
+            .modal-body { padding: 20px; }
+            .quiz-actions-row { flex-direction: column; }
+            .btn-hint, .quiz-actions-row .btn-start { width: 100% !important; justify-content: center; }
+            .bottles-container { gap: 10px; }
+            .bottle { width: 38px; height: 120px; }
+            .author-watermark { display: none; }
         }
     </style>
 </head>
@@ -444,6 +378,32 @@
     </div>
 
 <script>
+    // --- FIREBASE BAĞLANTISI ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyC_vYnIIHVa_3gxu71mHLyj8ND2iMloLiM",
+        authDomain: "pylingo-az.firebaseapp.com",
+        databaseURL: "https://pylingo-az-default-rtdb.firebaseio.com",
+        projectId: "pylingo-az",
+        storageBucket: "pylingo-az.firebasestorage.app",
+        messagingSenderId: "826148765513",
+        appId: "1:826148765513:web:3297d734efe98da8db2498",
+        measurementId: "G-8PE15WZCX6"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function saveScoreToFirebase(userName, userXp) {
+        if(!userName) return;
+        const sanitizedName = userName.replace(/[.#$\/\[\]]/g, "_");
+        db.ref('players/' + sanitizedName).set({
+            name: userName,
+            xp: userXp,
+            lastActive: Date.now()
+        });
+    }
+    // ---------------------------
+
     let selectedAvatar = '👨‍💻';
     let userData = {
         name: '', avatar: '👨‍💻', xp: 0, completedLevels: [], lives: 3, lastHeartLostTime: null,
@@ -647,7 +607,7 @@
         40: { section: 4, type: 'choice', text: "Açar tapılmadıqda xəta vermədən standart dəyər qaytaran metod hansıdır?", opts: ["get()", "find()", "search()", "keys()"], correct: 0, hint: "get()" },
 
         41: { section: 5, type: 'choice', text: "Python-da xətaları tutmaq üçün hansı blok istifadə edilir?", opts: ["try / except", "if / else", "for / in", "do / while"], correct: 0, hint: "try / except" },
-        42: { section: 5, type: 'write', text: "Ədədi sıfıra bölərkən yaranan xətanın adını yazın:", correct: ["zerodivisionerror"], hint: "ZeroDivisionError" },
+        42: { section: 5, type: 'write', text: "Ədədi sıfıra böldükdə yaranan xətanın adını yazın:", correct: ["zerodivisionerror"], hint: "ZeroDivisionError" },
         43: { section: 5, type: 'choice', text: "Xəta olub-olmamasından asılı olmayaraq HƏR ZAMAN işləyən blok hansıdır?", opts: ["finally", "except", "try", "else"], correct: 0, hint: "finally" },
         44: { section: 5, type: 'choice', text: "Faylı oxumaq rejimində açmaq üçün hansı hərf istifadə edilir?", opts: ["'r'", "'w'", "'a'", "'x'"], correct: 0, hint: "'r' (read)" },
         45: { section: 5, type: 'write', text: "Faylı yazma (write) rejimində açmaq üçün open() daxilinə hansı hərf yazılır?", correct: ["w", "'w'"], hint: "w" },
@@ -804,6 +764,10 @@
         userData.lastHeartLostTime = null;
         userData.unlockedHints = [];
         userData.puzzleDaily = { date: new Date().toISOString().split('T')[0], count: 0 };
+        
+        // --- Firebase-ə yazırıq ---
+        saveScoreToFirebase(userData.name, userData.xp);
+
         localStorage.setItem('pyLingoUser', JSON.stringify(userData));
         showMainScreen();
     }
@@ -942,6 +906,8 @@
 
         userData.xp -= 200;
         userData.unlockedHints.push(activeGlobalLvl);
+        
+        saveScoreToFirebase(userData.name, userData.xp);
         localStorage.setItem('pyLingoUser', JSON.stringify(userData));
 
         const q = questions[activeGlobalLvl];
@@ -996,6 +962,10 @@
         if(!userData.completedLevels.includes(activeGlobalLvl)) {
             userData.xp += 50;
             userData.completedLevels.push(activeGlobalLvl);
+            
+            // --- Xal yenilənəndə Firebase-ə göndər ---
+            saveScoreToFirebase(userData.name, userData.xp);
+            
             localStorage.setItem('pyLingoUser', JSON.stringify(userData));
         }
         document.getElementById('modal-next-btn').style.display = 'block';
